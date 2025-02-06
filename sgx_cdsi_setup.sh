@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Comprehensive SGX and CDSI Deployment Preparation Script
-# Supports Ubuntu 20.04 LTS and 22.04 LTS
+# Supports Ubuntu 22.04 LTS and 24.04 LTS
 
 set -e
 
@@ -33,10 +33,10 @@ check_ubuntu_version() {
     log_info "Checking Ubuntu Version..."
     if [ -f /etc/os-release ]; then
         . /etc/os-release
-        if [[ "$ID" == "ubuntu" && ("$VERSION_ID" == "20.04" || "$VERSION_ID" == "22.04") ]]; then
+        if [[ "$ID" == "ubuntu" && ("$VERSION_ID" == "22.04" || "$VERSION_ID" == "24.04") ]]; then
             log_success "Supported Ubuntu version: $VERSION_ID"
         else
-            log_error "Unsupported Ubuntu version: $VERSION_ID. Requires 20.04 or 22.04."
+            log_error "Unsupported Ubuntu version: $VERSION_ID. Requires 22.04 or 24.04."
             exit 1
         fi
     else
@@ -91,7 +91,7 @@ install_open_enclave() {
     log_info "Installing Open Enclave..."
     
     # Add Microsoft repository
-    echo "deb [arch=amd64] https://packages.microsoft.com/ubuntu/20.04/prod focal main" | sudo tee /etc/apt/sources.list.d/msprod.list
+    echo "deb [arch=amd64] https://packages.microsoft.com/ubuntu/24.04/prod focal main" | sudo tee /etc/apt/sources.list.d/msprod.list
     wget -qO - https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
     
     # Install Open Enclave
