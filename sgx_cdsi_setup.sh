@@ -150,7 +150,7 @@ install_open_enclave() {
             ;;
         24.04)
             log_warning "Using 22.04 repository for Open Enclave on Ubuntu 24.04"
-            REPO_URL="https://packages.microsoft.com/ubuntu/22.04/prod"
+            REPO_URL="https://packages.microsoft.com/ubuntu/24.04/prod/dists/noble/"
             ;;
     esac
     
