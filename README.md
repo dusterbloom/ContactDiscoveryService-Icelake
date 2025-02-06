@@ -1,132 +1,187 @@
-# CDSI (Contact Discovery Service on Icelake)
+# 📱 CDSI: Contact Discovery Service on Icelake 🧊
 
-## Code Locations
+## 🏗️ Project Overview
 
-The top-level directory contains a Java (Micronaut) service which will act as
-the host-side server for CDSI.  The `c/` subdirectory contains SGX-side C
-code.
+CDSI is a secure contact discovery service designed to help users find and connect with their contacts safely and efficiently. Think of it like a digital phonebook that protects your privacy!
 
-## Building
+## 📂 Project Structure
 
 ```
+📁 Root Directory
+│
+├── 🌐 Java Service (Micronaut)
+│   └── Handles server-side operations
+│
+└── 🔒 SGX C Code
+    └── Secure computation magic happens here
+```
+
+## 🛠️ Getting Started: Building the Project
+
+### Prerequisites
+- 💻 Git
+- ☕ Java Development Kit
+- 🔧 Maven
+- 🔐 OpenSSL 1.1.1
+
+
+
+### Libffi7
+
+```bash
+wget http://mirrors.kernel.org/ubuntu/pool/main/libf/libffi/libffi7_3.3-4_amd64.deb
+sudo dpkg -i libffi7_3.3-4_amd64.deb
+sudo apt-get install -f
+```
+### LibSSL
+
+```bash
+wget http://security.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.23_amd64.deb
+ sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.23_amd64.deb
+sudo apt-get install -f
+```
+
+### Azure Client + libllvm11
+
+```bash
+ sudo apt-get install az-dcap-client libllvm11
+```
+
+### OpenEnclave
+
+```bash
+sudo apt -y install open-enclave
+```
+
+### Maven
+
+```bash
+sudo apt install maven
+```
+
+### Java 17 OpenJDK
+
+```bash
+sudo apt update
+sudo apt install openjdk-17-jdk
+
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+export PATH=$JAVA_HOME/bin:$PATH
+
+source ~/.bashrc  
+```
+
+### 🆘 OpenSSL Installation Troubleshoot
+If you're on Ubuntu 22.04 and need OpenSSL 1.1.1:
+
+```bash
+# 📥 Download OpenSSL
+wget https://www.openssl.org/source/openssl-1.1.1u.tar.gz
+
+# 📦 Extract and install
+tar xvzf openssl-1.1.1u.tar.gz
+cd openssl-1.1.1u/
+./config
+make -j8
+sudo make install -j8
+sudo ldconfig
+
+```
+
+
+
+### Build Steps
+```bash
+# 🔗 Initialize submodules
 git submodule init
 git submodule update
+
+# 🏗️ Build and verify
 mvn verify
 ```
 
-Note:  running tests locally currently requires the installation of OpenSSL 1.1.1,
-which is standard in Ubuntu 20.04 but not in 22.04.  To install, you can:
 
-```
-wget https://ftp.openssl.org/source/openssl-1.1.1u.tar.gz
-tar xvzf openssl-1.1.1u.tar.gz 
-cd openssl-1.1.1u/
-./config 
-make  -j8
-sudo make install -j8
-sudo ldconfig
-```
 
-## Enclave releases
+## 🚀 Running the Service
 
-To create a new enclave release, run the following Maven command:
-
-```shell
-./mvnw exec:exec@enclave-release
-```
-
-...and commit the new files in `src/main/resources/org/signal/cdsi/enclave`.
-
-## Configuration
-
-The main CDSi application is built on the [Micronaut framework](https://micronaut.io/). It requires some runtime configuration to function outside a development environment.
-
-### Running in a development environment
-
-CDSi can run in a development environment in which it will use in-memory or mock implementations of most supporting services. This mode is absolutely not suitable for production usage, but may be helpful for testing or debugging. To run the CDSi application in a development environment, run in the `dev` environment:
-
-```
+### 🧪 Development Mode
+Perfect for testing and debugging:
+```bash
 ./mvnw mn:run -Dmicronaut.environments=dev
 ```
 
-The `dev` environment includes a test enclave binary and a reasonable default configuration. By default, the enclave will contain no records. To include a set of randomly-generated accounts for testing purposes, set the `random-account-populator.accounts` property (assuming no other account populator is configured) with the desired number of accounts, which must be less than or equal to the enclave's configured capacity.
 
-### Configuring CDSi for production environments
 
-To run CDSi in a "real" environment, certain properties must be set in some manner accessible to Micronaut (please see the [Micronaut configuration documentation](https://docs.micronaut.io/latest/guide/#config) for details).
+## Production mode
 
-#### Directory query rate limiter
+### Build the enclave
 
-The directory query rate limiter is backed by a Cosmos database, which must be configured with the following properties:
-
-```yaml
-cosmos:
-  database: database-name
-  container: container-name
-  endpoint: "https://cosmos.example.com:443"
-  key: <secret>
+```bash
+./mvnw exec:exec@enclave-release [build success]
 ```
 
-#### Connection rate limiter
 
-The connection rate limiter is backed by a Redis cluster, and requires Redis cluster configuration to start:
 
-```yaml
-redis:
-  uris: redis://redis.example.com
-```
 
-#### Account table/update stream
 
-CDSi must load account data from an account data source. To configure account loading/synchronization from a DynamoDB table and Kinesis stream, the following properties must be set:
 
-```yaml
-accountTable:
-  region: us-central-17
-  tableName: dynamodb-table-name
-  streamName: kinesis-stream-name
-```
+### 🌍 Production Configuration Checklist
 
-This system relies on an AWS Lambda (code in the `filter-cds-updates` subdirectory), which receives a DynamoDB update stream from the Account
-table and filters out just the subset of updates that contact discovery would find useful.  The Lambda forwards those to a Kinesis stream, which
-CDSi pulls from.
+#### 🔐 Security Setup
+- 🔑 Authentication Secret
+  ```yaml
+  authentication:
+    sharedSecret: <your-secret-here>
+  ```
 
-#### Authentication secret
+#### 💾 Data Sources
+- 🗃️ Cosmos Database (Rate Limiting)
+  ```yaml
+  cosmos:
+    database: your-database-name
+    endpoint: https://your-cosmos-endpoint
+  ```
 
-End users communicate directly with CDSi. To authenticate users, CDSi uses Signal's standard external service credential system. Consequently, the following property must be set:
+- 🔴 Redis Cluster
+  ```yaml
+  redis:
+    uris: redis://your-redis-server
+  ```
 
-```yaml
-authentication:
-  sharedSecret: <base64-encoded-32-byte-secret>
-```
+- 💽 Account Data
+  ```yaml
+  accountTable:
+    region: your-aws-region
+    tableName: your-dynamodb-table
+    streamName: your-kinesis-stream
+  ```
 
-#### Enclave configuration
-
-All CDSi instances must have exactly one enclave that manages access to directory data. To configure the enclave, provide the following configuration properties:
-
+#### 🏭 Enclave Configuration
 ```yaml
 enclave:
-  enclaveId: some-enclave-id
+  enclaveId: unique-enclave-id
   availableEpcMemory: 32000000
   loadFactor: 1.6
-  shards: 1
-  token-secret: <secret>
-  simulated: true
 ```
 
-Additionally, the enclave requires a `ScheduledExecutorService` to manage concurrent access to native resources. The executor service is named `enclave-jni` and is managed by Micronaut. Reasonable defaults are provided for all environments, but the concurrency level can be adjusted in Micronaut's executor configuration section:
-
-```yaml
-micronaut:
-  executors:
-    enclave-jni:
-      type: scheduled
-      core-pool-size: 1
+## 🆕 Creating Enclave Releases
+```bash
+# 🏷️ Generate new enclave version
+./mvnw exec:exec@enclave-release
 ```
 
-License
----------------------
+## 🤔 What Makes This Special?
 
-Copyright 2022 Signal Messenger, LLC
+- 🔒 **Secure Computation**: Uses SGX for ultra-private contact matching
+- 🚦 **Rate Limiting**: Prevents abuse with Cosmos and Redis
+- 🔄 **Dynamic Updates**: Syncs contact info from DynamoDB and Kinesis
 
-Licensed under the AGPLv3: https://www.gnu.org/licenses/agpl-3.0.html
+## 📜 License
+
+📍 AGPLv3 - Open Source, Privacy-Focused 
+© 2022 Signal Messenger, LLC
+
+## 🆘 Need Help?
+- Check our documentation
+- Explore the source code
+- Join our community discussions
