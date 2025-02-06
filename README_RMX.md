@@ -24,6 +24,72 @@ CDSI is a secure contact discovery service designed to help users find and conne
 - 🔧 Maven
 - 🔐 OpenSSL 1.1.1
 
+
+
+### Libffi7
+
+```bash
+wget http://mirrors.kernel.org/ubuntu/pool/main/libf/libffi/libffi7_3.3-4_amd64.deb
+sudo dpkg -i libffi7_3.3-4_amd64.deb
+sudo apt-get install -f
+```
+### LibSSL
+
+```bash
+wget http://security.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.23_amd64.deb
+ sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.23_amd64.deb
+sudo apt-get install -f
+```
+
+### Azure Client + libllvm11
+
+```bash
+ sudo apt-get install az-dcap-client libllvm11
+```
+
+### OpenEnclave
+
+```bash
+sudo apt -y install open-enclave
+```
+
+### Maven
+
+```bash
+sudo apt install maven
+```
+
+### Java 17 OpenJDK
+
+```bash
+sudo apt update
+sudo apt install openjdk-17-jdk
+
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+export PATH=$JAVA_HOME/bin:$PATH
+
+source ~/.bashrc  
+```
+
+### 🆘 OpenSSL Installation Troubleshoot
+If you're on Ubuntu 22.04 and need OpenSSL 1.1.1:
+
+```bash
+# 📥 Download OpenSSL
+wget https://www.openssl.org/source/openssl-1.1.1u.tar.gz
+
+# 📦 Extract and install
+tar xvzf openssl-1.1.1u.tar.gz
+cd openssl-1.1.1u/
+./config
+make -j8
+sudo make install -j8
+sudo ldconfig
+
+```
+
+
+
 ### Build Steps
 ```bash
 # 🔗 Initialize submodules
@@ -34,21 +100,7 @@ git submodule update
 mvn verify
 ```
 
-### 🆘 OpenSSL Installation Troubleshoot
-If you're on Ubuntu 22.04 and need OpenSSL 1.1.1:
 
-```bash
-# 📥 Download OpenSSL
-wget https://ftp.openssl.org/source/openssl-1.1.1u.tar.gz
-
-# 📦 Extract and install
-tar xvzf openssl-1.1.1u.tar.gz 
-cd openssl-1.1.1u/
-./config 
-make -j8
-sudo make install -j8
-sudo ldconfig
-```
 
 ## 🚀 Running the Service
 
@@ -57,6 +109,21 @@ Perfect for testing and debugging:
 ```bash
 ./mvnw mn:run -Dmicronaut.environments=dev
 ```
+
+
+
+## Production mode
+
+### Build the enclave
+
+```bash
+./mvnw exec:exec@enclave-release [build success]
+```
+
+
+
+
+
 
 ### 🌍 Production Configuration Checklist
 
