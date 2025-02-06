@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Comprehensive SGX and CDSI Deployment Preparation Script
-# Supports Ubuntu 22.04 LTS and 24.04 LTS
+# Universal SGX and CDSI Deployment Preparation Script
+# Supports Ubuntu 20.04, 22.04, and 24.04 LTS
 
 set -e
 
@@ -28,17 +28,27 @@ log_info() {
     echo -e "[*] $1"
 }
 
+# Global variables
+UBUNTU_CODENAME=""
+UBUNTU_VERSION=""
+
 # Check Ubuntu version
 check_ubuntu_version() {
     log_info "Checking Ubuntu Version..."
     if [ -f /etc/os-release ]; then
         . /etc/os-release
-        if [[ "$ID" == "ubuntu" && ("$VERSION_ID" == "22.04" || "$VERSION_ID" == "24.04") ]]; then
-            log_success "Supported Ubuntu version: $VERSION_ID"
-        else
-            log_error "Unsupported Ubuntu version: $VERSION_ID. Requires 22.04 or 24.04."
-            exit 1
-        fi
+        UBUNTU_CODENAME=$UBUNTU_CODENAME
+        UBUNTU_VERSION=$VERSION_ID
+
+        case "$VERSION_ID" in
+            20.04|22.04|24.04)
+                log_success "Supported Ubuntu version: $VERSION_ID ($UBUNTU_CODENAME)"
+                ;;
+            *)
+                log_error "Unsupported Ubuntu version: $VERSION_ID. Requires 20.04, 22.04, or 24.04."
+                exit 1
+                ;;
+        esac
     else
         log_error "Cannot determine Ubuntu version"
         exit 1
@@ -49,13 +59,15 @@ check_ubuntu_version() {
 prepare_system() {
     log_info "Updating system and installing base dependencies..."
     sudo apt-get update
+    sudo apt-get upgrade -y
     sudo apt-get install -y \
         wget \
         curl \
         software-properties-common \
         gnupg2 \
         build-essential \
-        libssl-dev
+        libssl-dev \
+        ca-certificates
     log_success "System updated and base dependencies installed"
 }
 
@@ -63,11 +75,14 @@ prepare_system() {
 install_sgx_repositories() {
     log_info "Installing Intel SGX repositories..."
     
-    # Install Intel SGX Repository Key
-    wget -qO - https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo apt-key add -
+    # Remove existing SGX repositories
+    sudo rm -f /etc/apt/sources.list.d/intel-sgx.list
     
-    # Add SGX repository
-    echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu focal main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list
+    # Install Intel SGX Repository Key
+    wget -qO - https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo gpg --dearmor -o /usr/share/keyrings/intel-sgx-keyring.gpg
+    
+    # Add SGX repository with signed-by option
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/intel-sgx-keyring.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu focal main" | sudo tee /etc/apt/sources.list.d/intel-sgx.list
     
     # Update package lists
     sudo apt-get update
@@ -77,12 +92,41 @@ install_sgx_repositories() {
 # Install SGX driver and libraries
 install_sgx_components() {
     log_info "Installing SGX components..."
-    sudo apt-get install -y \
-        libsgx-enclave-common \
-        libsgx-quote-ex \
-        libsgx-dcap-ql \
-        libsgx-dcap-default-qpl \
-        sgx-aesm-service
+    
+    # Determine appropriate package versions
+    case "$UBUNTU_VERSION" in
+        20.04)
+            SGX_PACKAGES=(
+                "libsgx-enclave-common=2.23.100.2-focal1"
+                "libsgx-quote-ex=2.23.100.2-focal1"
+                "libsgx-dcap-ql=1.20.100.2-focal1"
+                "libsgx-dcap-default-qpl=1.20.100.2-focal1"
+                "sgx-aesm-service=2.23.100.2-focal1"
+            )
+            ;;
+        22.04)
+            SGX_PACKAGES=(
+                "libsgx-enclave-common=2.23.100.2-jammy1"
+                "libsgx-quote-ex=2.23.100.2-jammy1"
+                "libsgx-dcap-ql=1.20.100.2-jammy1"
+                "libsgx-dcap-default-qpl=1.20.100.2-jammy1"
+                "sgx-aesm-service=2.23.100.2-jammy1"
+            )
+            ;;
+        24.04)
+            log_warning "Using fallback packages for Ubuntu 24.04"
+            SGX_PACKAGES=(
+                "libsgx-enclave-common"
+                "libsgx-quote-ex"
+                "libsgx-dcap-ql"
+                "libsgx-dcap-default-qpl"
+                "sgx-aesm-service"
+            )
+            ;;
+    esac
+
+    # Install SGX packages
+    sudo apt-get install -y "${SGX_PACKAGES[@]}"
     log_success "SGX components installed"
 }
 
@@ -90,11 +134,30 @@ install_sgx_components() {
 install_open_enclave() {
     log_info "Installing Open Enclave..."
     
-    # Add Microsoft repository
-    echo "deb [arch=amd64] https://packages.microsoft.com/ubuntu/24.04/prod focal main" | sudo tee /etc/apt/sources.list.d/msprod.list
-    wget -qO - https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+    # Remove existing Microsoft repository
+    sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
     
-    # Install Open Enclave
+    # Add Microsoft repository with signed-by option
+    wget -qO- https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-keyring.gpg
+    
+    # Determine appropriate repository based on Ubuntu version
+    case "$UBUNTU_VERSION" in
+        20.04)
+            REPO_URL="https://packages.microsoft.com/ubuntu/20.04/prod"
+            ;;
+        22.04)
+            REPO_URL="https://packages.microsoft.com/ubuntu/22.04/prod"
+            ;;
+        24.04)
+            log_warning "Using 22.04 repository for Open Enclave on Ubuntu 24.04"
+            REPO_URL="https://packages.microsoft.com/ubuntu/22.04/prod"
+            ;;
+    esac
+    
+    # Add repository
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-keyring.gpg] $REPO_URL $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/microsoft-prod.list
+    
+    # Update and install Open Enclave
     sudo apt-get update
     sudo apt-get install -y open-enclave
     
@@ -107,9 +170,8 @@ install_open_enclave() {
 install_java_maven() {
     log_info "Installing Java 17 and Maven..."
     
-    # Add OpenJDK repository
-    sudo add-apt-repository -y ppa:openjdk-r/ppa
-    sudo apt-get update
+    # Remove any existing Java-related repositories
+    sudo add-apt-repository -r ppa:openjdk-r/ppa
     
     # Install Java 17
     sudo apt-get install -y openjdk-17-jdk
@@ -124,16 +186,19 @@ install_java_maven() {
     log_success "Java 17 and Maven installed"
 }
 
-# Install Azure CLI
+# Install Azure CLI with modern method
 install_azure_cli() {
     log_info "Installing Azure CLI..."
     
+    # Remove existing Azure CLI repositories
+    sudo rm -f /etc/apt/sources.list.d/azure-cli.list
+    
     # Import Microsoft GPG key
-    curl -sL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/microsoft.gpg > /dev/null
+    curl -sL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-archive-keyring.gpg
     
     # Add Azure CLI repository
     AZ_REPO=$(lsb_release -cs)
-    echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $AZ_REPO main" | sudo tee /etc/apt/sources.list.d/azure-cli.list
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-archive-keyring.gpg] https://packages.microsoft.com/repos/azure-cli/ $AZ_REPO main" | sudo tee /etc/apt/sources.list.d/azure-cli.list
     
     # Install Azure CLI
     sudo apt-get update
@@ -150,14 +215,25 @@ configure_system() {
     sudo update-alternatives --set java /usr/lib/jvm/java-17-openjdk-amd64/bin/java
     
     # Configure PATH for Open Enclave
-    echo 'export PATH=$PATH:/opt/openenclave/bin' | sudo tee -a /etc/profile.d/openenclave.sh
+    echo 'export PATH=$PATH:/opt/openenclave/bin' | sudo tee /etc/profile.d/openenclave.sh
+    
+    # Set environment variables for SGX
+    echo 'export SGX_AESM_ADDR=1' | sudo tee /etc/profile.d/sgx.sh
     
     log_success "System configuration complete"
 }
 
+# Cleanup function
+cleanup() {
+    log_info "Cleaning up temporary files and updating package cache..."
+    sudo apt-get autoremove -y
+    sudo apt-get clean
+    sudo apt-get update
+}
+
 # Main installation process
 main() {
-    log_info "Starting Comprehensive SGX and CDSI Deployment Preparation"
+    log_info "Starting Universal SGX and CDSI Deployment Preparation"
     
     # Run installation steps
     check_ubuntu_version
@@ -168,6 +244,7 @@ main() {
     install_java_maven
     install_azure_cli
     configure_system
+    cleanup
     
     log_success "SGX and CDSI Deployment Preparation Complete!"
     log_warning "Please reboot your system to ensure all configurations take effect"
