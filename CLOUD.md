@@ -51,8 +51,6 @@ Your CLI is up-to-date.
 ```
 
 
-
-
 ## 1. Provision Cosmos DB for the Directory Query Rate Limiter ✨
 
 ### What You Need
@@ -60,19 +58,44 @@ Your CLI is up-to-date.
 
 ### Steps
 
+- **Create a resource group :**  
+  ```bash
+  az group create --name myResourceGroup --location EastUS
+  ```
+
+
+- **Check registration state  :**  
+  ```bash
+  az provider show --namespace Microsoft.DocumentDB --query "registrationState"
+  ```
+
+- **Register DocumentDB   :**  
+    ```bash
+    az provider register --namespace Microsoft.DocumentDB
+    ```
+
+
 - **Create a Cosmos DB Account:**  
   ```bash
-  az cosmosdb create --name my-cdsi-cosmos --resource-group myResourceGroup --kind GlobalDocumentDB --locations regionName=EastUS
+  az cosmosdb create --name my-cdsi-cosmos --resource-group myResourceGroup --kind GlobalDocumentDB --locations regionName=northeurope
   ```
 
 - **Create the Database and Container:**  
   ```bash
   az cosmosdb sql database create --account-name my-cdsi-cosmos --name cdsiDatabase --resource-group myResourceGroup
+  ```
+  
+  ```bash
   az cosmosdb sql container create --account-name my-cdsi-cosmos --database-name cdsiDatabase --name rateLimiterContainer --partition-key-path "/partitionKey" --resource-group myResourceGroup
   ```
 
 - **Configuration:**  
   Use the connection endpoint and key provided by Cosmos DB in your CDSI configuration (as specified in the repository’s configuration checklist).
+
+You can use this command to get the keys
+```bash
+az cosmosdb keys list --name my-cdsi-cosmos --resource-group myResourceGroup --type keys
+```
 
 ---
 
@@ -85,12 +108,21 @@ Your CLI is up-to-date.
 
 - **Create the Redis Instance:**  
   ```bash
-  az redis create --name my-cdsi-redis --resource-group myResourceGroup --location EastUS --sku Basic --vm-size c0
+  az redis create --name my-cdsi-redis --resource-group myResourceGroup --location northeurope --sku Basic --vm-size c0
   ```
 
 - **Configuration:**  
   Retrieve the connection string from the Azure Portal or via CLI and add it to your CDSI configuration (e.g., under the `redis: uris` property).
 
+  ```bash
+  az redis list-keys --name my-cdsi-redis --resource-group myResourceGroup
+  ```
+
+It should look like :
+
+```bash
+    uris: "my-cdsi-redis.redis.cache.windows.net:6380,password=<primary-key>,ssl=True,abortConnect=False"
+```
 ---
 
 ## 3. Establish an Event-Driven Pipeline for Account Data Updates 📊
