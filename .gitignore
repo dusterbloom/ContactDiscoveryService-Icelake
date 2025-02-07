@@ -15,3 +15,4 @@ out/
 .vscode/
 c/proto/cdsi.c
 c/proto/cdsi.h
+application.backup

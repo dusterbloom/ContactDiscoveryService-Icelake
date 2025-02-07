@@ -1,112 +1,72 @@
-/*
- * Copyright 2022 Signal Messenger, LLC
- * SPDX-License-Identifier: AGPL-3.0-only
- */
-package org.signal.lambda;
+package org.signal.cdsi;
 
-import com.amazonaws.services.lambda.runtime.Context;
-import com.amazonaws.services.lambda.runtime.RequestHandler;
-import com.amazonaws.services.lambda.runtime.events.DynamodbEvent;
-import com.amazonaws.services.lambda.runtime.events.StreamsEventResponse;
-import com.amazonaws.services.lambda.runtime.events.models.dynamodb.AttributeValue;
-import com.amazonaws.services.lambda.runtime.events.models.dynamodb.StreamRecord;
-import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.microsoft.azure.functions.*;
+import com.microsoft.azure.functions.annotation.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.annotations.VisibleForTesting;
-import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.kinesis.KinesisClient;
-import software.amazon.awssdk.services.kinesis.model.PutRecordRequest;
+import com.fasterxml.jackson.databind.JsonNode;
 
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+public class FilterCdsUpdatesFunction {
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-/**
- * Filters DynamoDb record updates for the subset relevant to contact discovery, outputing them to Kinesis
- */
-public class FilterCdsUpdatesHandler implements RequestHandler<DynamodbEvent, Serializable> {
-
-  private static final String KINESIS_OUTPUT_STREAM_ENVIRONMENT_VARIABLE = "KINESIS_OUTPUT_STREAM";
-  private static final String KINESIS_OUTPUT_REGION_ENVIRONMENT_VARIABLE = "KINESIS_OUTPUT_REGION";
-
-  @VisibleForTesting
-  static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
-  static {
-    OBJECT_MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-  }
-
-  private final KinesisClient kinesisClient;
-  private final String kinesisOutputStream;
-
-  public FilterCdsUpdatesHandler() {
-    this.kinesisClient = KinesisClient.builder()
-        .region(Region.of(System.getenv(KINESIS_OUTPUT_REGION_ENVIRONMENT_VARIABLE)))
-        .build();
-    this.kinesisOutputStream = System.getenv(KINESIS_OUTPUT_STREAM_ENVIRONMENT_VARIABLE);
-  }
-
-  @VisibleForTesting
-  FilterCdsUpdatesHandler(KinesisClient kinesisClient, String outputStream) {
-    this.kinesisClient = kinesisClient;
-    this.kinesisOutputStream = outputStream;
-  }
-
-  // https://docs.aws.amazon.com/lambda/latest/dg/with-ddb-create-package.html
-  @Override
-  public Serializable handleRequest(final DynamodbEvent dbUpdate, final Context context) {
-    List<StreamsEventResponse.BatchItemFailure> batchItemFailures = new ArrayList<>();
-    String curRecordSequenceNumber = "";
-
-    for (DynamodbEvent.DynamodbStreamRecord record : dbUpdate.getRecords()) {
-      StreamRecord dbRecord = record.getDynamodb();
-      curRecordSequenceNumber = dbRecord.getSequenceNumber();
-      try {
-        processRecord(dbRecord);
-      } catch (Exception e) {
-        batchItemFailures.add(new StreamsEventResponse.BatchItemFailure(curRecordSequenceNumber));
-        e.printStackTrace();
-      }
+    @FunctionName("FilterCdsUpdates")
+    @EventHubOutput(
+        name = "output",
+        eventHubName = "%EVENT_HUB_NAME%", 
+        connection = "EventHubConnectionString"
+    )
+    public String run(
+        @CosmosDBTrigger(
+            name = "input",
+            databaseName = "accountDatabase",
+            collectionName = "accountContainer",
+            connectionStringSetting = "CosmosDBConnection",
+            leaseCollectionName = "leases",
+            createLeaseCollectionIfNotExists = true
+        )
+        String[] documents,
+        final ExecutionContext context
+    ) {
+        try {
+            for (String document : documents) {
+                JsonNode change = OBJECT_MAPPER.readTree(document);
+                
+                // Extract old and new images
+                JsonNode oldImage = change.get("previousData");
+                JsonNode newImage = change.get("data");
+                
+                if (oldImage == null || oldImage.isEmpty()) {
+                    // Insert case
+                    Account newAccount = OBJECT_MAPPER.treeToValue(newImage, Account.class);
+                    return OBJECT_MAPPER.writeValueAsString(newAccount);
+                } else if (newImage == null || newImage.isEmpty()) {
+                    // Delete case
+                    Account oldAccount = OBJECT_MAPPER.treeToValue(oldImage, Account.class);
+                    return OBJECT_MAPPER.writeValueAsString(oldAccount.forceNotInCds());
+                }
+                
+                // Update case
+                Account oldAccount = OBJECT_MAPPER.treeToValue(oldImage, Account.class);
+                Account newAccount = OBJECT_MAPPER.treeToValue(newImage, Account.class);
+                
+                if (!oldAccount.e164.equals(newAccount.e164)) {
+                    // Phone number change - emit both records
+                    return OBJECT_MAPPER.writeValueAsString(new Account[]{
+                        oldAccount.forceNotInCds(),
+                        newAccount
+                    });
+                }
+                
+                if (!oldAccount.equals(newAccount)) {
+                    // Other changes - emit new record
+                    return OBJECT_MAPPER.writeValueAsString(newAccount);
+                }
+            }
+            
+            return null; // No updates needed
+            
+        } catch (Exception e) {
+            context.getLogger().severe("Error processing document: " + e.getMessage());
+            throw new RuntimeException(e);
+        }
     }
-
-    return new StreamsEventResponse(batchItemFailures);
-  }
-
-  // Modeled after https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/kds_gettingstarted.html
-  @VisibleForTesting
-  void processRecord(StreamRecord dbRecord) throws IOException {
-    for (Account update : dbUpdatesFor(dbRecord)) {
-      kinesisClient.putRecord(PutRecordRequest
-          .builder()
-          .data(SdkBytes.fromByteArray(OBJECT_MAPPER.writeValueAsBytes(update)))
-          .partitionKey(update.partitionKey())
-          .streamName(kinesisOutputStream)
-          .build());
-    }
-  }
-
-  private List<Account> dbUpdatesFor(StreamRecord dbRecord) {
-    Map<String, AttributeValue> oldImage = dbRecord.getOldImage();
-    Map<String, AttributeValue> newImage = dbRecord.getNewImage();
-    if (oldImage == null || oldImage.isEmpty()) {
-      // This is an insert, respect "should-be-in-cds"
-      return List.of(Account.fromItem(newImage));
-    } else if (newImage == null || newImage.isEmpty()) {
-      // This is a delete, remove.
-      return List.of(Account.fromItem(oldImage).forceNotInCds());
-    }
-    Account oldAccount = Account.fromItem(oldImage);
-    Account newAccount = Account.fromItem(newImage);
-    if (!oldAccount.e164.equals(newAccount.e164)) {
-      return List.of(oldAccount.forceNotInCds(), newAccount);
-    }
-    if (!oldAccount.equals(newAccount)) {
-      return List.of(newAccount);
-    }
-    return Collections.emptyList();
-  }
 }

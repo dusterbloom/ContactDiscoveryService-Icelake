@@ -23,14 +23,14 @@ endpoints:
 
 # Cosmos DB Configuration for rate limiting
 cosmos:
-  database: <your-cosmos-db-name>
-  container: <your-container-name>
-  endpoint: "https://<your-cosmos-instance>.documents.azure.com:443"
-  key: <your-cosmos-key>
+  database: cdsiDatabase
+  container: rateLimiterContainer
+  endpoint: "https://my-cdsi-cosmos-northeurope.documents.azure.com:443"
+  key: 
 
 # Redis Configuration for connection rate limiting
 redis:
-  uris: redis://<your-redis-host>
+  uris: "my-cdsi-redis.redis.cache.windows.net:6380,password=<>,ssl=True,abortConnect=False"
 
 # Account data source configuration
 accountTable:
