@@ -132,6 +132,28 @@ Since CDSI originally expects account updates via DynamoDB and Kinesis, the Azur
 - **Account Data Store:**  
   Consider using Cosmos DB (or Azure Table Storage) to store account data.
 
+
+- **Create a Cosmos DB Account:**  
+  ```bash
+  az cosmosdb create   --name my-cdsi-account-cosmos   --resource-group myResourceGroup   --kind GlobalDocumentDB   --locations regionName=northeurope
+  ```
+
+- **Create the Database and Container:**  
+  ```bash
+    az cosmosdb sql database create     --account-name my-cdsi-account-cosmos     --name accountDatabase     --resource-group myResourceGroup 
+  ```
+  
+  ```bash
+  az cosmosdb sql container create \
+    --account-name my-cdsi-account-cosmos \
+    --database-name accountDatabase \
+    --name accountContainer \
+    --partition-key-path "/partitionKey" \
+    --resource-group myResourceGroup
+  ```
+
+
+
 - **Event Ingestion with Event Hubs:**  
   Use Azure Event Hubs to capture streaming account updates.
 
