@@ -252,12 +252,6 @@
         <artifactId>azure-messaging-eventhubs</artifactId>
         <version>5.15.0</version>
     </dependency>
-
-    <!-- Micronaut validation -->
-    <dependency>
-        <groupId>io.micronaut.validation</groupId>
-        <artifactId>micronaut-validation</artifactId>
-    </dependency>
     <dependency>
         <groupId>com.azure</groupId>
         <artifactId>azure-cosmos</artifactId>
@@ -268,13 +262,6 @@
         <artifactId>jakarta.validation-api</artifactId>
         <version>3.0.2</version>
     </dependency>
-    <dependency>
-        <groupId>io.micronaut.validation</groupId>
-        <artifactId>micronaut-validation</artifactId>
-        <version>3.10.4</version>
-
-    </dependency>
-
   </dependencies>
 
   <build>
