@@ -264,15 +264,15 @@
         <version>4.39.0</version>
     </dependency>
     <dependency>
-        <groupId>com.azure</groupId>
-        <artifactId>azure-messaging-eventhubs</artifactId>
-        <version>5.15.0</version>
-    </dependency>
-    <dependency>
         <groupId>jakarta.validation</groupId>
         <artifactId>jakarta.validation-api</artifactId>
         <version>3.0.2</version>
     </dependency>
+    <dependency>
+        <groupId>io.micronaut.validation</groupId>
+        <artifactId>micronaut-validation</artifactId>
+    </dependency>
+
   </dependencies>
 
   <build>
