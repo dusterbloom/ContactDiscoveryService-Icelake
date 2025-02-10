@@ -1,19 +1,15 @@
-// src/main/java/org/signal/cdsi/account/azure/CosmosDbClientFactory.java 
-package org.signal.cdsi.account.azure;
-
-import io.micronaut.context.annotation.Factory;
-import jakarta.inject.Singleton;
+// CosmosDbClientFactory.java
+import com.azure.cosmos.ConsistencyLevel;
 import com.azure.cosmos.CosmosClient;
 import com.azure.cosmos.CosmosClientBuilder;
-
 
 @Singleton
 public class CosmosDbClientFactory {
     @Singleton
     CosmosClient cosmosClient(AzureAccountTableConfiguration config) {
         return new CosmosClientBuilder()
-            .endpoint(config.getCosmosEndpoint())
-            .key(config.getCosmosKey())
+            .endpoint(config.getCosmosDbEndpoint())
+            .key(config.getCosmosDbKey())
             .consistencyLevel(ConsistencyLevel.SESSION)
             .buildClient();
     }
