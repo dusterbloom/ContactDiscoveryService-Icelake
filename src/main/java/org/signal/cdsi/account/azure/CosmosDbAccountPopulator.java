@@ -1,166 +1,138 @@
 package org.signal.cdsi.account.azure;
 
-import jakarta.inject.Singleton;
+import com.azure.cosmos.CosmosContainer;
+import com.azure.cosmos.models.CosmosItemRequestOptions;
+import com.azure.cosmos.models.PartitionKey;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.micronaut.scheduling.annotation.Scheduled;
-import com.azure.cosmos.CosmosClient;
+import jakarta.inject.Singleton;
 import org.signal.cdsi.account.AccountPopulator;
 import org.signal.cdsi.enclave.DirectoryEntry;
+import org.signal.cdsi.metrics.MetricsUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Mono;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Singleton
 public class CosmosDbAccountPopulator implements AccountPopulator {
-   private final CosmosClient cosmosClient;
-   
-   public CosmosDbAccountPopulator(CosmosClient cosmosClient) {
-       this.cosmosClient = cosmosClient;
+   private static final Logger logger = LoggerFactory.getLogger(CosmosDbAccountPopulator.class);
+   private static final Duration METRICS_REFRESH_INTERVAL = Duration.ofMinutes(1);
+
+   private final CosmosContainer container;
+   private final MeterRegistry meterRegistry;
+   private final AtomicLong totalAccounts;
+   private final AtomicLong processedUpdates;
+   private volatile boolean running;
+   private volatile Instant lastUpdateTime;
+
+   public CosmosDbAccountPopulator(
+           final CosmosContainer container,
+           final MeterRegistry meterRegistry) {
+       this.container = container;
+       this.meterRegistry = meterRegistry;
+       this.totalAccounts = new AtomicLong(0);
+       this.processedUpdates = new AtomicLong(0);
+       this.lastUpdateTime = Instant.now();
+       
+       registerMetrics();
    }
-    // Replace ULong usage with NumberUtil methods
-    private String formatE164(long number) {
-        return NumberUtil.formatE164(number);
-    }
-    private static final Logger logger = LoggerFactory.getLogger(CosmosDbAccountPopulator.class);
-    private static final Duration METRICS_REFRESH_INTERVAL = Duration.ofMinutes(1);
 
-    private final CosmosContainer container;
-    private final MeterRegistry meterRegistry;
-    private final AtomicLong totalAccounts;
-    private final AtomicLong processedUpdates;
-    private volatile boolean running;
-    private volatile Instant lastUpdateTime;
+   private void registerMetrics() {
+       meterRegistry.gauge(MetricsUtil.name(getClass(), "accounts.total"), totalAccounts);
+       meterRegistry.gauge(MetricsUtil.name(getClass(), "accounts.updates.processed"), processedUpdates);
+       meterRegistry.gauge(MetricsUtil.name(getClass(), "accounts.last_update_age_seconds"), 
+           this,
+           populator -> Duration.between(populator.lastUpdateTime, Instant.now()).getSeconds());
+   }
 
-    public CosmosDbAccountPopulator(
-            final CosmosClient cosmosClient,
-            final String databaseName,
-            final String containerName,
-            final MeterRegistry meterRegistry) {
-        
-        this.container = cosmosClient.getDatabase(databaseName).getContainer(containerName);
-        this.meterRegistry = meterRegistry;
-        this.totalAccounts = new AtomicLong(0);
-        this.processedUpdates = new AtomicLong(0);
-        this.lastUpdateTime = Instant.now();
-        
-        registerMetrics();
-    }
+   @Override
+   public void loadAccounts(final DirectoryEntry entry) {
+       if (!running) {
+           logger.warn("Account populator is not running; discarding update");
+           return;
+       }
 
-    private void registerMetrics() {
-        meterRegistry.gauge("accounts.total", totalAccounts);
-        meterRegistry.gauge("accounts.updates.processed", processedUpdates);
-        meterRegistry.gauge("accounts.last_update_age_seconds", 
-            this,
-            populator -> Duration.between(populator.lastUpdateTime, Instant.now()).getSeconds());
-    }
+       try {
+           final String e164 = String.valueOf(entry.e164());
+           final AccountDocument document = buildAccountDocument(entry);
 
-    @Override
-    public void loadAccounts(final DirectoryEntry entry) {
-        if (!running) {
-            logger.warn("Account populator is not running; discarding update");
-            return;
-        }
+           container.upsertItem(document, new PartitionKey(e164), new CosmosItemRequestOptions())
+                   .flatMap(response -> {
+                       processedUpdates.incrementAndGet();
+                       lastUpdateTime = Instant.now();
+                       return updateTotalAccountsMetric();
+                   })
+                   .onErrorResume(error -> {
+                       logger.error("Failed to update account document: {}", e164, error);
+                       meterRegistry.counter(MetricsUtil.name(getClass(), "accounts.update.errors")).increment();
+                       return Mono.empty();
+                   })
+                   .block();
 
-        try {
-            final String e164 = ULong.toString(entry.getE164());
-            final AccountDocument document = buildAccountDocument(entry);
+       } catch (Exception e) {
+           logger.error("Error processing account update", e);
+           meterRegistry.counter(MetricsUtil.name(getClass(), "accounts.update.errors")).increment();
+       }
+   }
 
-            container.upsertItem(document, new PartitionKey(e164), new CosmosItemRequestOptions())
-                    .flatMap(response -> {
-                        processedUpdates.incrementAndGet();
-                        lastUpdateTime = Instant.now();
-                        return updateTotalAccountsMetric();
-                    })
-                    .onErrorResume(error -> {
-                        logger.error("Failed to update account document: {}", e164, error);
-                        meterRegistry.counter("accounts.update.errors").increment();
-                        return Mono.empty();
-                    })
-                    .block();  // Block since the interface is synchronous
+   private Mono<Void> updateTotalAccountsMetric() {
+       return container.readAllItems(new PartitionKey(""), AccountDocument.class)
+               .count()
+               .doOnNext(count -> totalAccounts.set(count))
+               .then();
+   }
 
-        } catch (Exception e) {
-            logger.error("Error processing account update", e);
-            meterRegistry.counter("accounts.update.errors").increment();
-        }
-    }
+   private AccountDocument buildAccountDocument(DirectoryEntry entry) {
+       AccountDocument document = new AccountDocument();
+       document.setId(String.valueOf(entry.e164()));
+       document.setE164(entry.e164());
+       
+       document.setAci(entry.aci());
+       document.setPni(entry.pni());
+       document.setUak(entry.uak());
+       
+       document.setLastUpdate(Instant.now());
+       return document;
+   }
 
-    private Mono<Void> updateTotalAccountsMetric() {
-        return container.readAllItems(new PartitionKey(""), AccountDocument.class)
-                .count()
-                .doOnNext(count -> totalAccounts.set(count))
-                .then();
-    }
+   @Override
+   public boolean hasFinishedInitialAccountPopulation() {
+       return running;
+   }
 
-    private AccountDocument buildAccountDocument(DirectoryEntry entry) {
-        AccountDocument document = new AccountDocument();
-        document.setId(ULong.toString(entry.getE164()));
-        document.setE164(entry.getE164());
-        
-        if (entry.hasAci()) {
-            document.setAci(entry.getAci());
-        }
-        
-        if (entry.hasPni()) {
-            document.setPni(entry.getPni());
-        }
-        
-        if (entry.hasUak()) {
-            document.setUak(entry.getUak());
-        }
-        
-        document.setLastUpdate(Instant.now());
-        return document;
-    }
+   @Override
+   public boolean isHealthy() {
+       return running;
+   }
 
-    @Override
-    public void start() {
-        logger.info("Starting CosmosDB account populator");
-        running = true;
+   private static class AccountDocument {
+       private String id;
+       private long e164;
+       private byte[] aci;
+       private byte[] pni;
+       private byte[] uak;
+       private Instant lastUpdate;
 
-        // Verify connection and container access
-        try {
-            container.readItem("test", new PartitionKey("test"), Object.class)
-                    .onErrorResume(error -> {
-                        if (!error.getMessage().contains("NotFound")) {
-                            logger.error("Failed to verify CosmosDB access", error);
-                        }
-                        return Mono.empty();
-                    })
-                    .block();
-        } catch (Exception e) {
-            logger.error("Failed to start CosmosDB account populator", e);
-            running = false;
-            throw e;
-        }
-    }
-
-    @Override
-    public void stop() {
-        logger.info("Stopping CosmosDB account populator");
-        running = false;
-    }
-
-    private static class AccountDocument {
-        private String id;
-        private long e164;
-        private Long aci;
-        private Long pni;
-        private Long uak;
-        private Instant lastUpdate;
-
-        // Getters and setters
-        public String getId() { return id; }
-        public void setId(String id) { this.id = id; }
-        
-        public long getE164() { return e164; }
-        public void setE164(long e164) { this.e164 = e164; }
-        
-        public Long getAci() { return aci; }
-        public void setAci(Long aci) { this.aci = aci; }
-        
-        public Long getPni() { return pni; }
-        public void setPni(Long pni) { this.pni = pni; }
-        
-        public Long getUak() { return uak; }
-        public void setUak(Long uak) { this.uak = uak; }
-        
-        public Instant getLastUpdate() { return lastUpdate; }
-        public void setLastUpdate(Instant lastUpdate) { this.lastUpdate = lastUpdate; }
-    }
+       public String getId() { return id; }
+       public void setId(String id) { this.id = id; }
+       
+       public long getE164() { return e164; }
+       public void setE164(long e164) { this.e164 = e164; }
+       
+       public byte[] getAci() { return aci; }
+       public void setAci(byte[] aci) { this.aci = aci; }
+       
+       public byte[] getPni() { return pni; }
+       public void setPni(byte[] pni) { this.pni = pni; }
+       
+       public byte[] getUak() { return uak; }
+       public void setUak(byte[] uak) { this.uak = uak; }
+       
+       public Instant getLastUpdate() { return lastUpdate; }
+       public void setLastUpdate(Instant lastUpdate) { this.lastUpdate = lastUpdate; }
+   }
 }

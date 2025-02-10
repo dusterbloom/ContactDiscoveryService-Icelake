@@ -6,13 +6,15 @@ import jakarta.inject.Singleton;
 import com.azure.cosmos.CosmosClient;
 import com.azure.cosmos.CosmosClientBuilder;
 
-@Factory
+
+@Singleton
 public class CosmosDbClientFactory {
     @Singleton
     CosmosClient cosmosClient(AzureAccountTableConfiguration config) {
         return new CosmosClientBuilder()
             .endpoint(config.getCosmosEndpoint())
             .key(config.getCosmosKey())
+            .consistencyLevel(ConsistencyLevel.SESSION)
             .buildClient();
     }
 }

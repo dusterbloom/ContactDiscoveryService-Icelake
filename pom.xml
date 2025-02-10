@@ -296,6 +296,12 @@
         <artifactId>msal4j</artifactId>
         <version>1.14.0</version>
     </dependency>
+
+    <dependency>
+      <groupId>io.projectreactor</groupId>
+      <artifactId>reactor-core</artifactId>
+      <version>3.5.10</version>
+    </dependency>
   </dependencies>
 
   <build>

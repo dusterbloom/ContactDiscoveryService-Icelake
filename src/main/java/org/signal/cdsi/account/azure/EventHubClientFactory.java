@@ -1,23 +1,20 @@
-package org.signal.cdsi.account.azure;
-
-import io.micronaut.context.annotation.Factory;
-import jakarta.inject.Singleton;
 import com.azure.messaging.eventhubs.*;
+import com.azure.identity.DefaultAzureCredential;
+import jakarta.inject.Singleton;
 
-@Factory
+@Singleton
 public class EventHubClientFactory {
+    private final AzureAccountTableConfiguration config;
+
+    public EventHubClientFactory(AzureAccountTableConfiguration config) {
+        this.config = config;
+    }
+
     @Singleton
-    EventHubConsumerClient eventHubConsumerClient(AzureAccountTableConfiguration config) {
+    EventHubConsumerClient eventHubConsumerClient() {
         return new EventHubClientBuilder()
             .connectionString(config.getEventHubConnectionString())
             .consumerGroup(config.getEventHubConsumerGroup())
             .buildConsumerClient();
-    }
-
-    @Singleton
-    EventHubProducerClient eventHubProducerClient(AzureAccountTableConfiguration config) {
-        return new EventHubClientBuilder()
-            .connectionString(config.getEventHubConnectionString())
-            .buildProducerClient();
     }
 }
