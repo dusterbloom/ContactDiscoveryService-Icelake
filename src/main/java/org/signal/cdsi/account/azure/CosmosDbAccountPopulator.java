@@ -1,24 +1,22 @@
 package org.signal.cdsi.account.azure;
 
+import jakarta.inject.Singleton;
+import io.micronaut.scheduling.annotation.Scheduled;
 import com.azure.cosmos.CosmosClient;
-import com.azure.cosmos.CosmosContainer;
-import com.azure.cosmos.models.CosmosItemRequestOptions;
-import com.azure.cosmos.models.PartitionKey;
-import io.micrometer.core.instrument.MeterRegistry;
 import org.signal.cdsi.account.AccountPopulator;
 import org.signal.cdsi.enclave.DirectoryEntry;
-import org.signal.cdsi.util.ULong;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Mono;
-
-import javax.inject.Singleton;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.concurrent.atomic.AtomicLong;
 
 @Singleton
 public class CosmosDbAccountPopulator implements AccountPopulator {
+   private final CosmosClient cosmosClient;
+   
+   public CosmosDbAccountPopulator(CosmosClient cosmosClient) {
+       this.cosmosClient = cosmosClient;
+   }
+    // Replace ULong usage with NumberUtil methods
+    private String formatE164(long number) {
+        return NumberUtil.formatE164(number);
+    }
     private static final Logger logger = LoggerFactory.getLogger(CosmosDbAccountPopulator.class);
     private static final Duration METRICS_REFRESH_INTERVAL = Duration.ofMinutes(1);
 

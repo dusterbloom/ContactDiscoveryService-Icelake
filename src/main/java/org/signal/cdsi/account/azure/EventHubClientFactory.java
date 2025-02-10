@@ -1,36 +1,23 @@
 package org.signal.cdsi.account.azure;
 
-import com.azure.messaging.eventhubs.EventHubClientBuilder;
-import com.azure.messaging.eventhubs.EventHubConsumerClient;
-import com.azure.messaging.eventhubs.EventHubProducerClient;
 import io.micronaut.context.annotation.Factory;
-import io.micronaut.context.annotation.Value;
 import jakarta.inject.Singleton;
+import com.azure.messaging.eventhubs.*;
 
 @Factory
 public class EventHubClientFactory {
-
-    @Value("${azure.eventhub.connection-string}")
-    private String connectionString;
-
-    @Value("${azure.eventhub.name}")
-    private String eventHubName;
-
-    @Value("${azure.eventhub.consumer-group}")
-    private String consumerGroup;
-
     @Singleton
-    EventHubConsumerClient eventHubConsumerClient() {
+    EventHubConsumerClient eventHubConsumerClient(AzureAccountTableConfiguration config) {
         return new EventHubClientBuilder()
-                .connectionString(connectionString, eventHubName)
-                .consumerGroup(consumerGroup)
-                .buildConsumerClient();
+            .connectionString(config.getEventHubConnectionString())
+            .consumerGroup(config.getEventHubConsumerGroup())
+            .buildConsumerClient();
     }
 
     @Singleton
-    EventHubProducerClient eventHubProducerClient() {
+    EventHubProducerClient eventHubProducerClient(AzureAccountTableConfiguration config) {
         return new EventHubClientBuilder()
-                .connectionString(connectionString, eventHubName)
-                .buildProducerClient();
+            .connectionString(config.getEventHubConnectionString())
+            .buildProducerClient();
     }
 }
