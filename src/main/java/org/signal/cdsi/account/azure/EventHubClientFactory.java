@@ -1,5 +1,6 @@
+package org.signal.cdsi.account.azure;
+
 import com.azure.messaging.eventhubs.*;
-import com.azure.identity.DefaultAzureCredential;
 import jakarta.inject.Singleton;
 
 @Singleton
@@ -15,6 +16,15 @@ public class EventHubClientFactory {
         return new EventHubClientBuilder()
             .connectionString(config.getEventHubConnectionString())
             .consumerGroup(config.getEventHubConsumerGroup())
+            .eventHubName(config.getEventHubName())
             .buildConsumerClient();
+    }
+
+    @Singleton
+    EventHubProducerClient eventHubProducerClient() {
+        return new EventHubClientBuilder()
+            .connectionString(config.getEventHubConnectionString())
+            .eventHubName(config.getEventHubName())
+            .buildProducerClient();
     }
 }
