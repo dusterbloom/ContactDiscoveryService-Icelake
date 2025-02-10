@@ -1,0 +1,10 @@
+{
+    "IsEncrypted": false,
+    "Values": {
+        "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+        "FUNCTIONS_WORKER_RUNTIME": "java",
+        "CosmosDBConnection": "AccountEndpoint=https://<your-cosmos>.documents.azure.com:443/;AccountKey=<key>;",
+        "EventHubConnectionString": "Endpoint=sb://<namespace>.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=<key>",
+        "EventHubName": "cdsiUpdates"
+    }
+}
