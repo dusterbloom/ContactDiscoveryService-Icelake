@@ -12,6 +12,7 @@ import com.azure.cosmos.models.PartitionKey;
 import org.signal.cdsi.account.AccountPopulator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.util.stream.StreamSupport;
 
 /**
  * An AccountPopulator implementation for Azure using Cosmos DB.
@@ -42,7 +43,7 @@ public class CosmosDbAccountPopulator implements AccountPopulator {
     }
 
   
-    /**
+   /**
      * Returns the total number of account documents in the container.
      * Uses the async API and blocks for the result.
      *
@@ -52,10 +53,11 @@ public class CosmosDbAccountPopulator implements AccountPopulator {
         return container
                 .readAllItems(new PartitionKey(""), AccountDocument.class)
                 .byPage()
-                .map(page -> page.getElements().size())
+                .map(page -> StreamSupport.stream(page.getElements().spliterator(), false).count())
                 .reduce(0L, Long::sum)
                 .block();
     }
+
 
     /**
      * Single definition of updateTotalAccountsMetric().
