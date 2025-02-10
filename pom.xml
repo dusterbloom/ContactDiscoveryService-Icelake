@@ -55,15 +55,14 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
-    </dependencies>
-    <!-- Add Azure SDK AWS  -->
-    <dependency>
-      <groupId>com.azure</groupId>
-      <artifactId>azure-sdk-bom</artifactId>
-      <version>${azure.sdk.version}</version>
-      <type>pom</type>
-      <scope>import</scope>
+      <dependency>
+        <groupId>com.azure</groupId>
+        <artifactId>azure-sdk-bom</artifactId>
+        <version>${azure.sdk.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
     </dependency>
+    </dependencies>
   </dependencyManagement>
 
   <dependencies>
