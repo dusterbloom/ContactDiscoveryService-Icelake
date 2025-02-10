@@ -267,13 +267,34 @@
       <artifactId>azure-messaging-eventhubs-checkpointstore-blob</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.azure</groupId>
-      <artifactId>azure-identity</artifactId>
-    </dependency> 
+        <groupId>com.azure</groupId>
+        <artifactId>azure-identity</artifactId>
+        <exclusions>
+            <exclusion>
+                <groupId>net.java.dev.jna</groupId>
+                <artifactId>jna-platform</artifactId>
+            </exclusion>
+            <exclusion>
+                <groupId>com.microsoft.azure</groupId>
+                <artifactId>msal4j</artifactId>
+            </exclusion>
+        </exclusions>
+    </dependency>
     <dependency>
         <groupId>jakarta.validation</groupId>
         <artifactId>jakarta.validation-api</artifactId>
         <version>3.0.2</version>
+    </dependency>
+
+    <dependency>
+      <groupId>net.java.dev.jna</groupId>
+      <artifactId>jna-platform</artifactId>
+      <version>5.13.0</version>
+    </dependency>
+    <dependency>
+        <groupId>com.microsoft.azure</groupId>
+        <artifactId>msal4j</artifactId>
+        <version>1.14.0</version>
     </dependency>
   </dependencies>
 
