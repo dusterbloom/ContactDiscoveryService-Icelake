@@ -22,6 +22,7 @@
 
     <testcontainers.version>1.19.7</testcontainers.version>
     <aws.sdk.version>2.25.34</aws.sdk.version>
+    <azure.sdk.version>1.2.21</azure.sdk.version>
     <commons.codec.version>1.16.1</commons.codec.version>
     <guava.version>33.1.0-jre</guava.version>
   </properties>
@@ -55,6 +56,14 @@
         <scope>import</scope>
       </dependency>
     </dependencies>
+    <!-- Add Azure SDK AWS  -->
+    <dependency>
+      <groupId>com.azure</groupId>
+      <artifactId>azure-sdk-bom</artifactId>
+      <version>${azure.sdk.version}</version>
+      <type>pom</type>
+      <scope>import</scope>
+    </dependency>
   </dependencyManagement>
 
   <dependencies>
@@ -246,17 +255,22 @@
       <artifactId>junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
-    <!-- Azure SDK dependencies -->
-    <dependency>
-        <groupId>com.azure</groupId>
-        <artifactId>azure-messaging-eventhubs</artifactId>
-        <version>5.15.0</version>
+     <dependency>
+      <groupId>com.azure</groupId>
+      <artifactId>azure-cosmos</artifactId>
     </dependency>
     <dependency>
-        <groupId>com.azure</groupId>
-        <artifactId>azure-cosmos</artifactId>
-        <version>4.39.0</version>
+      <groupId>com.azure</groupId>
+      <artifactId>azure-messaging-eventhubs</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.azure</groupId>
+      <artifactId>azure-messaging-eventhubs-checkpointstore-blob</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.azure</groupId>
+      <artifactId>azure-identity</artifactId>
+    </dependency> 
     <dependency>
         <groupId>jakarta.validation</groupId>
         <artifactId>jakarta.validation-api</artifactId>
