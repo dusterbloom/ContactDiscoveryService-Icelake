@@ -271,6 +271,8 @@
     <dependency>
         <groupId>io.micronaut.validation</groupId>
         <artifactId>micronaut-validation</artifactId>
+        <version>3.10.4</version>
+
     </dependency>
 
   </dependencies>
