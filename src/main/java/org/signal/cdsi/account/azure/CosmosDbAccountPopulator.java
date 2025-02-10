@@ -41,21 +41,20 @@ public class CosmosDbAccountPopulator implements AccountPopulator {
         return response.getItem();
     }
 
+  
     /**
      * Returns the total number of account documents in the container.
-     * Because the reactive API method count() is not available on CosmosPagedIterable,
-     * we iterate manually.
+     * Uses the async API and blocks for the result.
      *
      * @return the count of documents
      */
     public long getTotalAccounts() {
-        CosmosPagedIterable<AccountDocument> iterable = container
-                .readAllItems(new PartitionKey(""), AccountDocument.class);
-        long count = 0;
-        for (AccountDocument doc : iterable) {
-            count++;
-        }
-        return count;
+        return container
+                .readAllItems(new PartitionKey(""), AccountDocument.class)
+                .byPage()
+                .map(page -> page.getElements().size())
+                .reduce(0L, Long::sum)
+                .block();
     }
 
     /**
