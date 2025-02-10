@@ -4,8 +4,8 @@
  */
 package org.signal.cdsi.account.azure;
 
+import com.azure.cosmos.util.CosmosPagedIterable; // Correct package for CosmosPagedIterable
 import com.azure.cosmos.CosmosAsyncContainer;
-import com.azure.cosmos.CosmosPagedIterable;
 import com.azure.cosmos.models.CosmosItemRequestOptions;
 import com.azure.cosmos.models.CosmosItemResponse;
 import com.azure.cosmos.models.PartitionKey;
@@ -20,7 +20,7 @@ public class CosmosDbAccountPopulator implements AccountPopulator {
 
     private static final Logger logger = LoggerFactory.getLogger(CosmosDbAccountPopulator.class);
 
-    // The container from which to read and update account documents.
+    // The Cosmos container from which to read and update account documents.
     private final CosmosAsyncContainer container;
 
     public CosmosDbAccountPopulator(CosmosAsyncContainer container) {
@@ -28,18 +28,10 @@ public class CosmosDbAccountPopulator implements AccountPopulator {
     }
 
     /**
-     * Example initialization method.
-     * (Remove any incorrect @Override annotation if present.)
-     */
-    public void initialize() {
-        // initialization code here if needed
-    }
-
-    /**
      * Reads an account document in a blocking manner.
      *
      * @param id  the document id
-     * @param key the partition key (typically a string version of the e164 number)
+     * @param key the partition key (for example, a string version of the e164 number)
      * @return the AccountDocument read from Cosmos DB
      */
     public AccountDocument readAccountDocument(String id, String key) {
@@ -51,26 +43,32 @@ public class CosmosDbAccountPopulator implements AccountPopulator {
 
     /**
      * Returns the total number of account documents in the container.
-     * Uses the stream API because CosmosPagedIterable does not have a direct count() method.
+     * Because the reactive API method count() is not available on CosmosPagedIterable,
+     * we iterate manually.
      *
      * @return the count of documents
      */
     public long getTotalAccounts() {
-        CosmosPagedIterable<AccountDocument> iterable = container.readAllItems(new PartitionKey(""), AccountDocument.class);
-        return iterable.stream().count();
+        CosmosPagedIterable<AccountDocument> iterable = container
+                .readAllItems(new PartitionKey(""), AccountDocument.class);
+        long count = 0;
+        for (AccountDocument doc : iterable) {
+            count++;
+        }
+        return count;
     }
 
     /**
-     * Single definition of updateTotalAccountsMetric() (duplicate removed).
+     * Single definition of updateTotalAccountsMetric().
      *
-     * @return the total number of accounts
+     * @return the total number of accounts (as a metric value)
      */
     public long updateTotalAccountsMetric() {
         return getTotalAccounts();
     }
 
     /**
-     * Example method that demonstrates converting a primitive long to a String.
+     * Converts a long value to a String.
      *
      * @param value a long value
      * @return the string representation of the value
@@ -97,7 +95,7 @@ public class CosmosDbAccountPopulator implements AccountPopulator {
     public static class AccountDocument {
         private String id;
         private long e164;
-        // add other fields as necessary
+        // Add other fields as necessary
 
         // Getters and setters
         public String getId() {

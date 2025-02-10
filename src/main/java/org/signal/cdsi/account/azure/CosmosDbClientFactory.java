@@ -1,16 +1,33 @@
-// CosmosDbClientFactory.java
-import com.azure.cosmos.ConsistencyLevel;
-import com.azure.cosmos.CosmosClient;
-import com.azure.cosmos.CosmosClientBuilder;
+/*
+ * Copyright 2022 Signal Messenger, LLC
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+package org.signal.cdsi.account.azure;
 
+import com.azure.cosmos.CosmosAsyncClient;
+import com.azure.cosmos.CosmosClientBuilder;
+import com.azure.cosmos.ConsistencyLevel;
+// Use Jakarta inject (Micronaut uses jakarta.inject now)
+import jakarta.inject.Singleton;
+
+/**
+ * Factory for creating a CosmosAsyncClient using settings from AzureAccountTableConfiguration.
+ */
 @Singleton
 public class CosmosDbClientFactory {
+
+    private final AzureAccountTableConfiguration config;
+
+    public CosmosDbClientFactory(AzureAccountTableConfiguration config) {
+        this.config = config;
+    }
+
     @Singleton
-    CosmosClient cosmosClient(AzureAccountTableConfiguration config) {
+    public CosmosAsyncClient cosmosAsyncClient() {
         return new CosmosClientBuilder()
-            .endpoint(config.getCosmosDbEndpoint())
-            .key(config.getCosmosDbKey())
-            .consistencyLevel(ConsistencyLevel.SESSION)
-            .buildClient();
+                .endpoint(config.getCosmosDbEndpoint())  // Make sure your configuration defines getCosmosDbEndpoint()
+                .key(config.getCosmosDbKey())            // ...and getCosmosDbKey()
+                .consistencyLevel(ConsistencyLevel.SESSION)
+                .buildAsyncClient();
     }
 }
