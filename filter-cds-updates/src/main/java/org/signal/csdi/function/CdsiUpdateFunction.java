@@ -29,10 +29,13 @@ public class CdsiUpdateFunction {
     }
 
     @FunctionName("ProcessCdsiUpdates")
-    @EventHubOutput(
-        name = "output",
-        eventHubName = "%EventHubName%",
-        connection = "EventHubConnectionString"
+    @CosmosDBTrigger(
+        name = "input",
+        databaseName = "accountDatabase",
+        containerName = "accountContainer",
+        connection = "CosmosDBConnection",
+        leaseContainerName = "leases",
+        createLeaseContainerIfNotExists = true
     )
     public String run(
         @CosmosDBTrigger(

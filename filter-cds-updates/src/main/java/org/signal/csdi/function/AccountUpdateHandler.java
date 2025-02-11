@@ -1,11 +1,8 @@
-package org.signal.cdsi.account.azure.function;
+package org.signal.csdi.function;
 
 import com.azure.messaging.eventhubs.EventData;
-import org.signal.cdsi.account.AccountUpdateValidator;
-import org.signal.cdsi.enclave.DirectoryEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.util.Optional;
 
 public class AccountUpdateHandler {
