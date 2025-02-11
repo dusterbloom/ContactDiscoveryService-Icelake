@@ -4,64 +4,115 @@ micronaut:
   executors:
     enclave-jni:
       type: scheduled
-      core-pool-size: 1
+      core-pool-size: 4
   metrics:
     enabled: true
     export:
       statsd:
         enabled: true
+        flavor: datadog
+        step: PT1M
   server:
-    port: 8080  # Main server port
+    port: 8080
     netty:
       compression-threshold: 1073741824
       compression-level: 0
+      max-initial-line-length: 16384
+      max-header-size: 32768
+      max-chunk-size: 65536
+      write-buffer-high-water-mark: 65536
+      write-buffer-low-water-mark: 32768
+  retry:
+    attempts: 3
+    delay: 1s
+    multiplier: 2
 
-# Endpoint configuration
 endpoints:
   all:
     port: 8081
+    sensitive: false
+  health:
+    details-visible: ANONYMOUS
 
-# Cosmos DB Configuration for rate limiting
+# Rate Limiter Cosmos DB Configuration
 cosmos:
   database: cdsiDatabase
   container: rateLimiterContainer
-  endpoint: "https://my-cdsi-cosmos-northeurope.documents.azure.com:443"
-  key: 
+  endpoint: "https://${COSMOS_ACCOUNT_NAME}.documents.azure.com:443"
+  key: ${COSMOS_KEY}
+  preferredRegions: ["northeurope", "eastus"]
+  consistencyLevel: Session
+  connectionMode: DIRECT
+  contentResponseOnWriteEnabled: true
 
-# Redis Configuration for connection rate limiting
+# Redis Configuration
 redis:
-  uris: "my-cdsi-redis.redis.cache.windows.net:6380,password=<>,ssl=True,abortConnect=False"
+  uris: "${REDIS_HOST}:6380,password=${REDIS_KEY},ssl=True,abortConnect=False"
+  timeout: 2000
+  retryAttempts: 3
+  retryDelay: 200
 
-# Account data source configuration
-accountTable:
-  region: <your-aws-region>
-  tableName: <your-dynamodb-table>
-  streamName: <your-kinesis-stream>
+redis-leaky-bucket:
+  urls:
+    - "redis://${REDIS_HOST}:6380"
+  circuit-breaker:
+    attempts: 3
+    delay: 500ms
+    reset: 5s
 
-# Authentication configuration
+# Azure Configuration
+azure:
+  cosmos:
+    database: accountDatabase
+    container: accountContainer
+    endpoint: "https://${ACCOUNT_COSMOS_NAME}.documents.azure.com:443"
+    key: ${ACCOUNT_COSMOS_KEY}
+  eventHub:
+    namespace: ${EVENT_HUB_NAMESPACE}
+    name: ${EVENT_HUB_NAME}
+    consumerGroup: "$Default"
+    batchSize: 100
+    maxWaitTimeInSeconds: 30
+  retry:
+    maxRetries: 3
+    initialRetryInterval: PT0.1S
+    maxRetryInterval: PT30S
+    backoffCoefficient: 2.0
+  circuitBreaker:
+    cosmos:
+      requestTimeout: PT5S
+      failureThreshold: 5
+      delay: PT1S
+      successThreshold: 3
+    eventHub:
+      requestTimeout: PT10S
+      failureThreshold: 3
+      delay: PT2S
+      successThreshold: 2
+
+# Authentication Configuration
 authentication:
-  sharedSecret: <your-base64-encoded-32-byte-secret>
+  sharedSecret: ${AUTH_SECRET}
+  tokenExpiration: 24h
 
-# Enclave configuration
+# Enclave Configuration
 enclave:
-  enclaveId: <your-enclave-id>
+  enclaveId: ${ENCLAVE_ID}
   availableEpcMemory: 32000000
   loadFactor: 1.6
-  shards: 1
-  token-secret: <your-token-secret>
-  simulated: false
+  shards: 4
+  token-secret: ${TOKEN_SECRET}
+  maxOutstandingRequests: 1000
+  attestationRefreshInterval: 10m
+  attestationInitialDelay: 0s
 
+# Rate Limiting Configuration
 leakyBucketLimit:
-  connections:
-    bucket-size: 10
-    leak-rate-scalar: 10
-    leak-rate-duration: PT1M
+  bucketSize: 1000
+  leakRateScalar: 50
+  leakRateDuration: 1s
 
 tokenRateLimit:
-  bucket-size: 50000
-  leak-rate-scalar: 6
-  leak-rate-duration: PT1H
-
-logger:
-  levels:
-    com.azure.cosmos: WARN
+  bucketSize: 5000
+  leakRateScalar: 100
+  leakRateDuration: 1s

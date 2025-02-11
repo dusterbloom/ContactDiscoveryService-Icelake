@@ -16,3 +16,4 @@ out/
 c/proto/cdsi.c
 c/proto/cdsi.h
 application.backup
+.env
