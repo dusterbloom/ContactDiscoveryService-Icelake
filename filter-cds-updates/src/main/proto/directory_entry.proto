@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "org.signal.csdi.proto";
+
+package org.signal.csdi;
+
+message DirectoryEntryProto {
+  int64 e164 = 1;
+  bytes aci = 2;
+  bytes pni = 3;
+  bytes uak = 4;
+}
