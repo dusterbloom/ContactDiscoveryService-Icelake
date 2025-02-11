@@ -1,4 +1,4 @@
-package org.signal.cdsi.azure;
+package org.signal.cdsi.function;
 
 import com.microsoft.azure.functions.*;
 import com.microsoft.azure.functions.annotation.*;
