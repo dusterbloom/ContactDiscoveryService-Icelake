@@ -11,10 +11,11 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <java.version>11</java.version>
+        <java.version>17</java.version>
         <azure.functions.maven.plugin.version>1.22.0</azure.functions.maven.plugin.version>
         <azure.functions.java.library.version>3.0.0</azure.functions.java.library.version>
         <functionAppName>cdsi-filter-updates</functionAppName>
+        <protobuf.version>3.21.8</protobuf.version>
     </properties>
 
     <dependencies>
@@ -28,17 +29,25 @@
             <artifactId>jackson-databind</artifactId>
             <version>2.13.4.1</version>
         </dependency>
-        <!-- Add Azure Cosmos DB dependency -->
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-cosmos</artifactId>
             <version>4.39.0</version>
         </dependency>
-        <!-- Add Azure Event Hubs dependency -->
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-messaging-eventhubs</artifactId>
             <version>5.13.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>${protobuf.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.36</version>
         </dependency>
     </dependencies>
 
@@ -64,7 +73,7 @@
                     <region>eastus</region>
                     <runtime>
                         <os>linux</os>
-                        <javaVersion>11</javaVersion>
+                        <javaVersion>17</javaVersion>
                     </runtime>
                     <appSettings>
                         <property>
@@ -73,11 +82,34 @@
                         </property>
                     </appSettings>
                 </configuration>
+            </plugin>
+            <!-- Add protobuf compiler plugin -->
+            <plugin>
+                <groupId>org.xolstice.maven.plugins</groupId>
+                <artifactId>protobuf-maven-plugin</artifactId>
+                <version>0.6.1</version>
+                <configuration>
+                    <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
+                    <protoSourceRoot>${project.basedir}/src/main/proto</protoSourceRoot>
+                </configuration>
                 <executions>
                     <execution>
-                        <id>package-functions</id>
                         <goals>
-                            <goal>package</goal>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- OS Detection Extension for protoc binary -->
+            <plugin>
+                <groupId>kr.motd.maven</groupId>
+                <artifactId>os-maven-plugin</artifactId>
+                <version>1.7.0</version>
+                <executions>
+                    <execution>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>detect</goal>
                         </goals>
                     </execution>
                 </executions>

@@ -1,10 +1,9 @@
-package org.signal.cdsi.function;
+package org.signal.csdi.function;
 
 import com.microsoft.azure.functions.*;
 import com.microsoft.azure.functions.annotation.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -16,6 +15,18 @@ public class CdsiUpdateFunction {
     private static final String ATTR_PNI_UUID = "PNI";
     private static final String ATTR_CANONICALLY_DISCOVERABLE = "C";
     private static final String ATTR_UAK = "UAK";
+
+    public record Account(
+        long e164,
+        UUID uuid,
+        UUID pni,
+        byte[] uak,
+        boolean canonicallyDiscoverable
+    ) {
+        public Account forceNotInCds() {
+            return new Account(e164, uuid, pni, uak, false);
+        }
+    }
 
     @FunctionName("ProcessCdsiUpdates")
     @EventHubOutput(
@@ -40,8 +51,6 @@ public class CdsiUpdateFunction {
             
             for (String document : documents) {
                 JsonNode change = OBJECT_MAPPER.readTree(document);
-                
-                // Get the previous and new data from the Cosmos DB change feed
                 JsonNode oldImage = change.get("previousData");
                 JsonNode newImage = change.get("data");
                 
@@ -61,29 +70,24 @@ public class CdsiUpdateFunction {
 
         try {
             if (oldImage == null || oldImage.isEmpty()) {
-                // This is an insert, respect "should-be-in-cds"
                 Account newAccount = accountFromJson(newImage);
                 if (newAccount != null) {
                     updates.add(newAccount);
                 }
             } else if (newImage == null || newImage.isEmpty()) {
-                // This is a delete - create a deletion entry
                 Account oldAccount = accountFromJson(oldImage);
                 if (oldAccount != null) {
                     updates.add(oldAccount.forceNotInCds());
                 }
             } else {
-                // This is an update - handle both old and new states
                 Account oldAccount = accountFromJson(oldImage);
                 Account newAccount = accountFromJson(newImage);
                 
                 if (oldAccount != null && newAccount != null) {
                     if (!oldAccount.e164().equals(newAccount.e164())) {
-                        // Phone number changed - emit both records
                         updates.add(oldAccount.forceNotInCds());
                         updates.add(newAccount);
                     } else if (!oldAccount.equals(newAccount)) {
-                        // Other changes - emit new record
                         updates.add(newAccount);
                     }
                 }
@@ -102,7 +106,6 @@ public class CdsiUpdateFunction {
 
         try {
             String e164String = item.get(ATTR_ACCOUNT_E164).asText();
-            // Remove '+' prefix and parse to long
             long e164 = Long.parseLong(e164String.substring(1));
             
             UUID uuid = UUIDFromBytes(item.get(KEY_ACCOUNT_UUID).binaryValue());
@@ -137,29 +140,5 @@ public class CdsiUpdateFunction {
         }
         
         return new UUID(msb, lsb);
-    }
-
-    private record Account(
-        long e164,
-        UUID uuid,
-        UUID pni,
-        byte[] uak,
-        boolean canonicallyDiscoverable
-    ) {
-        Account forceNotInCds() {
-            return new Account(e164, uuid, pni, uak, false);
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            Account account = (Account) o;
-            return e164 == account.e164 &&
-                   canonicallyDiscoverable == account.canonicallyDiscoverable &&
-                   uuid.equals(account.uuid) &&
-                   pni.equals(account.pni) &&
-                   java.util.Arrays.equals(uak, account.uak);
-        }
     }
 }
