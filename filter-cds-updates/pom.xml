@@ -49,19 +49,25 @@
             <artifactId>slf4j-api</artifactId>
             <version>1.7.36</version>
         </dependency>
+        
+        <!-- Test dependencies -->
         <dependency>
-            <groupId>org.signal.cdsi</groupId>
-            <artifactId>cdsi-common</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.google.protobuf</groupId>
-            <artifactId>protobuf-java</artifactId>
-            <version>${protobuf.version}</version>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.8.2</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
     <build>
+        <extensions>
+            <extension>
+                <groupId>kr.motd.maven</groupId>
+                <artifactId>os-maven-plugin</artifactId>
+                <version>1.7.0</version>
+            </extension>
+        </extensions>
+        
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -93,13 +99,15 @@
                     </appSettings>
                 </configuration>
             </plugin>
-            <!-- Add protobuf compiler plugin -->
+            
+            <!-- Protobuf compiler plugin -->
             <plugin>
                 <groupId>org.xolstice.maven.plugins</groupId>
                 <artifactId>protobuf-maven-plugin</artifactId>
                 <version>0.6.1</version>
                 <configuration>
                     <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
+                    <pluginId>grpc-java</pluginId>
                     <protoSourceRoot>${project.basedir}/src/main/proto</protoSourceRoot>
                 </configuration>
                 <executions>
@@ -110,19 +118,12 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- OS Detection Extension for protoc binary -->
+            
+            <!-- Test plugin -->
             <plugin>
-                <groupId>kr.motd.maven</groupId>
-                <artifactId>os-maven-plugin</artifactId>
-                <version>1.7.0</version>
-                <executions>
-                    <execution>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>detect</goal>
-                        </goals>
-                    </execution>
-                </executions>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.22.2</version>
             </plugin>
         </plugins>
     </build>
