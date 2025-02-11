@@ -4,6 +4,7 @@ import com.azure.messaging.eventhubs.*;
 import com.azure.core.amqp.AmqpRetryOptions;
 import io.micronaut.context.annotation.Factory;
 import jakarta.inject.Singleton;
+import java.time.Duration; 
 
 @Factory
 public class EventHubClientFactory {
