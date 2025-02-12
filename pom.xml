@@ -301,6 +301,13 @@
       <artifactId>jna-platform</artifactId>
       <version>5.13.0</version>
     </dependency>
+          
+    <dependency>
+      <groupId>net.minidev</groupId>
+      <artifactId>json-smart</artifactId>
+      <version>2.4.13</version> <!-- Try the latest version first -->
+    </dependency>
+      
     <dependency>
         <groupId>com.microsoft.azure</groupId>
         <artifactId>msal4j</artifactId>
