@@ -62,6 +62,21 @@
         <type>pom</type>
         <scope>import</scope>
     </dependency>
+     <dependency>
+            <groupId>com.microsoft.azure</groupId>
+            <artifactId>msal4j</artifactId>
+            <version>1.13.5</version> <!-- Using slightly older version -->
+        </dependency>
+        <dependency>
+            <groupId>com.nimbusds</groupId>
+            <artifactId>oauth2-oidc-sdk</artifactId>
+            <version>9.43.1</version> <!-- Using older version with different json-smart requirements -->
+        </dependency>
+        <dependency>
+            <groupId>net.minidev</groupId>
+            <artifactId>json-smart</artifactId>
+            <version>2.4.7</version>
+        </dependency>
 
     <dependency>
       <groupId>io.projectreactor</groupId>
@@ -260,10 +275,7 @@
       <artifactId>junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
-     <dependency>
-      <groupId>com.azure</groupId>
-      <artifactId>azure-cosmos</artifactId>
-    </dependency>
+
     <dependency>
       <groupId>com.azure</groupId>
       <artifactId>azure-messaging-eventhubs</artifactId>
@@ -273,8 +285,8 @@
       <artifactId>azure-messaging-eventhubs-checkpointstore-blob</artifactId>
     </dependency>
     <dependency>
-        <groupId>com.azure</groupId>
-        <artifactId>azure-identity</artifactId>
+       <groupId>com.azure</groupId>
+    <artifactId>azure-identity</artifactId>
         <exclusions>
             <exclusion>
                 <groupId>net.java.dev.jna</groupId>
@@ -283,6 +295,10 @@
             <exclusion>
                 <groupId>com.microsoft.azure</groupId>
                 <artifactId>msal4j</artifactId>
+            </exclusion>
+            <exclusion>
+                <groupId>net.minidev</groupId>
+                <artifactId>json-smart</artifactId>
             </exclusion>
         </exclusions>
     </dependency>
@@ -297,17 +313,27 @@
       <artifactId>jna-platform</artifactId>
       <version>5.13.0</version>
     </dependency>
-          
-    <dependency>
-      <groupId>net.minidev</groupId>
-      <artifactId>json-smart</artifactId>
-      <version>2.4.10</version> 
-    </dependency>
+
       
     <dependency>
-        <groupId>com.microsoft.azure</groupId>
-        <artifactId>msal4j</artifactId>
-        <version>1.14.0</version>
+    <groupId>com.microsoft.azure</groupId>
+    <artifactId>msal4j</artifactId>
+    <version>1.14.0</version>
+    <exclusions>
+        <exclusion>
+            <groupId>net.minidev</groupId>
+            <artifactId>json-smart</artifactId>
+        </exclusion>
+    </exclusions>
+    </dependency>
+
+    <dependency>
+    <groupId>com.microsoft.azure</groupId>
+    <artifactId>msal4j</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>net.minidev</groupId>
+        <artifactId>json-smart</artifactId>
     </dependency>
 
  
