@@ -2,7 +2,14 @@ micronaut:
   executors:
     enclave-jni:
       number-of-threads: 1
-
+  metrics:
+    export:
+      statsd:
+        enabled: false
+  server:
+    host: 0.0.0.0  # Binds to all network interfaces
+    port: 8082
+    
 endpoints:
   all:
     port: 8082  # Change management port to avoid conflicts
