@@ -399,6 +399,11 @@
               <artifactId>micronaut-micrometer-annotation</artifactId>
               <version>${micronaut.micrometer.version}</version>
             </path>
+            <path>
+            <groupId>io.micronaut</groupId>
+            <artifactId>micronaut-inject-java</artifactId>
+            <version>${micronaut.version}</version>
+            </path>
           </annotationProcessorPaths>
           <compilerArgs>
             <arg>-Amicronaut.processing.group=org.signal.cdsi</arg>
